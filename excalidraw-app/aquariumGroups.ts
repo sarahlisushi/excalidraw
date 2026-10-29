@@ -1,3 +1,5 @@
+import { getCommonBounds } from "@excalidraw/excalidraw";
+
 import type { NonDeletedExcalidrawElement } from "@excalidraw/element/types";
 
 type Point = { x: number; y: number };
@@ -80,39 +82,97 @@ export const groupAquariumElements = (
       }
     }
   }
-  // Ray parity works across separately drawn pieces of the same outline.
-  // Only accept a closed outline: every path endpoint must meet another.
+  // Flood from outside the ink. Closed pockets stay enclosed even when
+  // fins or tails branch off the body, or strokes overshoot their joins.
   const components = new Map<number, number[]>();
   visible.forEach((_, i) =>
     components.set(root(i), [...(components.get(root(i)) || []), i]),
   );
   for (const indices of components.values()) {
-    const ends = indices.flatMap((i) =>
-      paths[i].length > 1 ? [paths[i][0], paths[i][paths[i].length - 1]] : [],
-    );
-    if (
-      !ends.length ||
-      !ends.every((p, i) =>
-        ends.some((q, j) => i !== j && Math.hypot(p.x - q.x, p.y - q.y) <= 8),
-      )
-    ) {
+    const outline = indices.flatMap((i) => segments[i]);
+    if (!outline.length) {
       continue;
     }
-    const outline = indices.flatMap((i) => segments[i]);
-    const inside = (p: Point) =>
-      outline.reduce(
-        (count, [a, b]) =>
-          count +
-          Number(
-            (a.y > p.y ? b.y <= p.y : b.y > p.y) &&
-              p.x < ((b.x - a.x) * (p.y - a.y)) / (b.y - a.y) + a.x,
-          ),
-        0,
-      ) %
-        2 ===
-      1;
+    const [left, top, right, bottom] = getCommonBounds(
+      indices.map((i) => visible[i]),
+    );
+    const cell = Math.max(1, (right - left) / 192, (bottom - top) / 192);
+    const width = Math.ceil((right - left) / cell) + 12;
+    const height = Math.ceil((bottom - top) / cell) + 12;
+    const grid = new Uint8Array(width * height);
+    const position = (p: Point) => ({
+      x: Math.round((p.x - left) / cell) + 6,
+      y: Math.round((p.y - top) / cell) + 6,
+    });
+    for (const [a, b] of outline) {
+      const steps = Math.max(
+        1,
+        Math.ceil((Math.hypot(b.x - a.x, b.y - a.y) / cell) * 2),
+      );
+      for (let step = 0; step <= steps; step++) {
+        const p = position({
+          x: a.x + ((b.x - a.x) * step) / steps,
+          y: a.y + ((b.y - a.y) * step) / steps,
+        });
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            if (
+              p.x + dx >= 0 &&
+              p.x + dx < width &&
+              p.y + dy >= 0 &&
+              p.y + dy < height
+            ) {
+              grid[(p.y + dy) * width + p.x + dx] = 1;
+            }
+          }
+        }
+      }
+    }
+    const queue = [0];
+    grid[0] = 2;
+    for (let cursor = 0; cursor < queue.length; cursor++) {
+      const index = queue[cursor];
+      const x = index % width;
+      const y = Math.floor(index / width);
+      for (const [nx, ny] of [
+        [x - 1, y],
+        [x + 1, y],
+        [x, y - 1],
+        [x, y + 1],
+      ]) {
+        if (
+          nx >= 0 &&
+          nx < width &&
+          ny >= 0 &&
+          ny < height &&
+          grid[ny * width + nx] === 0
+        ) {
+          grid[ny * width + nx] = 2;
+          queue.push(ny * width + nx);
+        }
+      }
+    }
+    const inside = (point: Point) => {
+      const p = position(point);
+      return (
+        p.x >= 0 &&
+        p.x < width &&
+        p.y >= 0 &&
+        p.y < height &&
+        grid[p.y * width + p.x] !== 2
+      );
+    };
     visible.forEach((e, i) => {
-      if (paths[i].length && paths[i].every(inside)) {
+      const [x1, y1, x2, y2] = getCommonBounds([e]);
+      const samples = paths[i].length
+        ? paths[i]
+        : [
+            { x: x1, y: y1 },
+            { x: x2, y: y1 },
+            { x: x1, y: y2 },
+            { x: x2, y: y2 },
+          ];
+      if (samples.every(inside)) {
         join(indices[0], i);
       }
     });

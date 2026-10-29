@@ -154,8 +154,8 @@ export const PlayModes = ({ api }: { api: ExcalidrawImperativeAPI }) => {
             sprite.x +=
               sprite.direction *
               dt *
-              (45 + Math.sin(elapsed * 3 + sprite.phase) * 12);
-            sprite.y += Math.sin(elapsed * 0.7 + sprite.phase) * dt * 22;
+              (20 + Math.sin(elapsed * 1.5 + sprite.phase) * 3);
+            sprite.y += Math.sin(elapsed * 0.5 + sprite.phase) * dt * 5;
           }
           const w = sprite.image.width;
           const h = sprite.image.height;
@@ -168,12 +168,12 @@ export const PlayModes = ({ api }: { api: ExcalidrawImperativeAPI }) => {
           ctx.save();
           ctx.translate(sprite.x + w / 2, sprite.y + h / 2);
           ctx.scale(sprite.direction, 1);
-          ctx.rotate(Math.sin(elapsed * 1.5 + sprite.phase) * 0.06);
+          ctx.rotate(Math.sin(elapsed * 0.8 + sprite.phase) * 0.015);
           for (let x = 0; x < w; x += 2) {
             const slice = Math.min(2, w - x);
             const wave =
-              Math.sin(elapsed * 7 + (x / w) * 7 + sprite.phase) *
-              Math.min(22, h * 0.2) *
+              Math.sin(elapsed * 2.5 + (x / w) * 4 + sprite.phase) *
+              Math.min(3, h * 0.03) *
               (1 - x / w);
             ctx.drawImage(
               sprite.image,

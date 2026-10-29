@@ -4,6 +4,42 @@ import { pointFrom } from "@excalidraw/math";
 import { groupAquariumElements } from "../aquariumGroups";
 
 describe("aquarium fish", () => {
+  it("keeps enclosed shapes with a body even when a fin has an open endpoint", () => {
+    const elements = convertToExcalidrawElements([
+      {
+        type: "line",
+        x: 0,
+        y: 0,
+        points: [
+          pointFrom(0, 0),
+          pointFrom(120, 0),
+          pointFrom(120, 100),
+          pointFrom(0, 100),
+          pointFrom(0, 0),
+        ],
+      },
+      {
+        type: "line",
+        x: 40,
+        y: 0,
+        points: [pointFrom(0, 0), pointFrom(0, -40), pointFrom(30, 10)],
+      },
+      { type: "ellipse", x: 20, y: 25, width: 12, height: 12 },
+      { type: "text", x: 50, y: 45, text: "hi", fontSize: 12 },
+      {
+        type: "line",
+        x: 220,
+        y: 0,
+        points: [pointFrom(0, 0), pointFrom(30, 40)],
+      },
+    ]);
+    expect(
+      groupAquariumElements(elements)
+        .map((g) => g.length)
+        .sort(),
+    ).toEqual([1, 4]);
+  });
+
   it("joins a loop drawn in separate strokes, including an eye inside", () => {
     const elements = convertToExcalidrawElements([
       {
