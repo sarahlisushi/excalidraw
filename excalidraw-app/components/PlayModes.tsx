@@ -5,6 +5,7 @@ import { exportScene, getCommonBounds } from "@excalidraw/excalidraw";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 
 import { BALL_RADIUS, isGoal, stepBall } from "../playPhysics";
+import { groupAquariumElements } from "../aquariumGroups";
 
 import "./PlayModes.scss";
 
@@ -12,11 +13,12 @@ import type { Ball, Rail } from "../playPhysics";
 
 type Mode = "draw" | "ball" | "aquarium";
 type Sprite = {
-  version: number;
+  version: string;
   image: HTMLCanvasElement;
   x: number;
   y: number;
   phase: number;
+  direction: number;
 };
 
 export const PlayModes = ({ api }: { api: ExcalidrawImperativeAPI }) => {
@@ -51,26 +53,25 @@ export const PlayModes = ({ api }: { api: ExcalidrawImperativeAPI }) => {
       updating = true;
       try {
         const elements = api.getSceneElements();
-        const ids = new Set(elements.map((element) => element.id));
-        for (const id of sprites.keys()) {
-          if (!ids.has(id)) {
-            sprites.delete(id);
-          }
-        }
-        for (const element of elements) {
+        const groups = groupAquariumElements(elements);
+        const ids = new Set<string>();
+        for (const group of groups) {
           if (!alive) {
             break;
           }
-          if (element.type === "frame" || element.type === "magicframe") {
-            continue;
-          }
-          const old = sprites.get(element.id);
-          if (old?.version === element.version) {
+          const id = group
+            .map((e) => e.id)
+            .sort()
+            .join(":");
+          ids.add(id);
+          const version = group.map((e) => `${e.id}:${e.version}`).join(",");
+          const old = sprites.get(id);
+          if (old?.version === version) {
             continue;
           }
           const image = await exportScene({
             type: "canvas",
-            data: { elements: [element], files: api.getFiles() },
+            data: { elements: group, files: api.getFiles() },
             config: {
               canvasBackgroundColor: false,
               padding: 8,
@@ -79,13 +80,20 @@ export const PlayModes = ({ api }: { api: ExcalidrawImperativeAPI }) => {
             },
           });
           const state = api.getAppState();
-          sprites.set(element.id, {
-            version: element.version,
+          const bounds = getCommonBounds(group);
+          sprites.set(id, {
+            version,
             image,
-            x: old?.x ?? (element.x + state.scrollX) * state.zoom.value,
-            y: old?.y ?? (element.y + state.scrollY) * state.zoom.value,
+            x: old?.x ?? (bounds[0] + state.scrollX) * state.zoom.value,
+            y: old?.y ?? (bounds[1] + state.scrollY) * state.zoom.value,
             phase: old?.phase ?? sprites.size * 2.4,
+            direction: old?.direction ?? 1,
           });
+        }
+        for (const id of sprites.keys()) {
+          if (!ids.has(id)) {
+            sprites.delete(id);
+          }
         }
       } catch {
         // An unfinished element may not be exportable until its next edit.
@@ -143,18 +151,42 @@ export const PlayModes = ({ api }: { api: ExcalidrawImperativeAPI }) => {
         }
         for (const sprite of sprites.values()) {
           if (!pausedRef.current) {
-            sprite.x += Math.cos(sprite.phase) * dt * 38;
+            sprite.x +=
+              sprite.direction *
+              dt *
+              (45 + Math.sin(elapsed * 3 + sprite.phase) * 12);
             sprite.y += Math.sin(elapsed * 0.7 + sprite.phase) * dt * 22;
           }
           const w = sprite.image.width;
           const h = sprite.image.height;
-          sprite.x =
-            ((((sprite.x + w) % (width + w)) + width + w) % (width + w)) - w;
+          if (sprite.x > width - w - 16) {
+            sprite.direction = -1;
+          } else if (sprite.x < 16) {
+            sprite.direction = 1;
+          }
           sprite.y = Math.max(70, Math.min(height - 110, sprite.y));
           ctx.save();
           ctx.translate(sprite.x + w / 2, sprite.y + h / 2);
-          ctx.rotate(Math.sin(elapsed * 1.5 + sprite.phase) * 0.14);
-          ctx.drawImage(sprite.image, -w / 2, -h / 2);
+          ctx.scale(sprite.direction, 1);
+          ctx.rotate(Math.sin(elapsed * 1.5 + sprite.phase) * 0.06);
+          for (let x = 0; x < w; x += 2) {
+            const slice = Math.min(2, w - x);
+            const wave =
+              Math.sin(elapsed * 7 + (x / w) * 7 + sprite.phase) *
+              Math.min(22, h * 0.2) *
+              (1 - x / w);
+            ctx.drawImage(
+              sprite.image,
+              x,
+              0,
+              slice,
+              h,
+              x - w / 2,
+              -h / 2 + wave,
+              slice,
+              h,
+            );
+          }
           ctx.restore();
         }
         if (!sprites.size) {
