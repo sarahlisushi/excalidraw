@@ -1,0 +1,61 @@
+.excalidraw .play-mode-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.play-modes {
+  position: absolute;
+  bottom: 62px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 6;
+  max-width: calc(100% - 24px);
+  width: max-content;
+  padding: 8px;
+  border: 1px solid #b8c8d2;
+  border-radius: 16px;
+  background: #fffffff5;
+  color: #193648;
+  box-shadow: 0 6px 24px #14384d20;
+  font-family: sans-serif;
+
+  &__tabs,
+  &__actions {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+  }
+
+  button {
+    cursor: pointer;
+    border: 0;
+    border-radius: 10px;
+    padding: 9px 15px;
+    background: #eef4f7;
+    color: #193648;
+    font: inherit;
+    font-size: 14px;
+  }
+
+  button[aria-pressed="true"] {
+    background: #126e82;
+    color: white;
+  }
+
+  button:focus-visible {
+    outline: 3px solid #f59e0b;
+    outline-offset: 2px;
+  }
+
+  p {
+    max-width: 360px;
+    margin: 8px 4px;
+    text-align: center;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+}
