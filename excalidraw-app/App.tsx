@@ -101,6 +101,7 @@ import Collab, {
 } from "./collab/Collab";
 import { AppFooter } from "./components/AppFooter";
 import { AppMainMenu } from "./components/AppMainMenu";
+import { insertStoryboard } from "./storyboard";
 import { AppWelcomeScreen } from "./components/AppWelcomeScreen";
 import {
   ExportToExcalidrawPlus,
@@ -1036,6 +1037,9 @@ const ExcalidrawWrapper = () => {
         }}
       >
         <AppMainMenu
+          onNewStoryboard={
+            excalidrawAPI ? () => insertStoryboard(excalidrawAPI) : undefined
+          }
           onCollabDialogOpen={onCollabDialogOpen}
           isCollaborating={isCollaborating}
           isCollabEnabled={isCollabAvailable}
