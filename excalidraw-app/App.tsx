@@ -101,6 +101,7 @@ import Collab, {
 } from "./collab/Collab";
 import { AppFooter } from "./components/AppFooter";
 import { AppMainMenu } from "./components/AppMainMenu";
+import { PlayModes } from "./components/PlayModes";
 import { insertStoryboard } from "./storyboard";
 import { AppWelcomeScreen } from "./components/AppWelcomeScreen";
 import {
@@ -190,7 +191,9 @@ window.addEventListener(
 
 let isSelfEmbedding = false;
 
-if (window.self !== window.top) {
+// Development previews may intentionally embed the app on the same origin.
+// Keep the recursive-embedding protection for production builds.
+if (!import.meta.env.DEV && window.self !== window.top) {
   try {
     const parentUrl = new URL(document.referrer);
     const currentUrl = new URL(window.location.href);
@@ -1071,6 +1074,7 @@ const ExcalidrawWrapper = () => {
           )}
         </OverwriteConfirmDialog>
         <AppFooter onChange={() => excalidrawAPI?.refresh()} />
+        {excalidrawAPI && <PlayModes api={excalidrawAPI} />}
         {excalidrawAPI && <AIComponents excalidrawAPI={excalidrawAPI} />}
 
         <TTDDialogTrigger />
